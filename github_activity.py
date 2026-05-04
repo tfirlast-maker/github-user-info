@@ -27,14 +27,6 @@ def get_user_info(username):
         print("An error occurred while fetching user data")
         return None
     
-def format_response(response):
-    print(f"Username: {response["login"]}")
-    print(f"Email: {response["email"]}")
-    print(f"ID: {response["id"]}")
-    print(f"Company: {response["company"]}")
-    print("-------------- Stats --------------")
-    print(f"Followers: {response["followers"]} --- Public repos: {response["public_repos"]} --- Creation date: {response["created_at"]}")
-   
 def get_user_events(username):
     url = "https://api.github.com/users"
     try:
@@ -56,30 +48,64 @@ def get_user_events(username):
         print("An error occurred while fetching user data")
         return None
    
-if len(sys.argv) == 1:
-    args = False
-else:
-    target_user = args.u
-    args == True
-    
-while True:
-    if args == False:
-        target_user = input("What user is your target?: ")
-    else:
-        args = False
-        
-    if target_user.lower() == "exit":
-        break
-    
-    user_info = get_user_info(target_user)
-    user_events = get_user_events(target_user)
 
-    if user_info is not None:
-        format_response(user_info)
-    if user_events is not None:
-        print("---------- Recent events ----------")
+target_user = args.u
+user_info = get_user_info(target_user)
+user_events = get_user_events(target_user)
+
+if user_info is not None:
+    print(f"Username: {user_info['login']}")
+    print(f"Email: {user_info['email']}")
+    print(f"ID: {user_info['id']}")
+    print(f"Company: {user_info['company']}")
+    print("-------------- Stats --------------")
+    print(f"Followers: {user_info['followers']} --- Public repos: {user_info['public_repos']} --- Creation date: {user_info['created_at']}")
+
+if user_events is not None:
+    print("---------- Recent events ----------")
+    try:
         for event in user_events[:5]:
             print(f"{event['type']} at {event['created_at']} to repository {event['repo']['name']}")
-
-    print("-------------------------------------------------------------------------")
+            
+            if event['type'] == "PushEvent":
+                commits = event['payload'].get('commits')
+                if commits:
+                    print(f"  - Pushed {len(commits)} commits to {event['repo']['name']}")
+                else:
+                    print(f"  - Pushed to {event['repo']['name']}")
+                    
+            elif event['type'] == "CreateEvent":
+                print(f"  - Created {event['payload']['ref_type']} {event['payload']['ref']} in {event['repo']['name']}")
+            elif event['type'] == "DeleteEvent":
+                print(f"  - Deleted {event['payload']['ref_type']} {event['payload']['ref']} in {event['repo']['name']}")
+            elif event['type'] == "WatchEvent":
+                print(f"  - Started watching {event['repo']['name']}")
+            elif event['type'] == "ForkEvent":
+                print(f"  - Forked {event['repo']['name']} to {event['payload']['forkee']['full_name']}")
+            elif event['type'] == "IssuesEvent":
+                print(f"  - {event['payload']['action']} issue #{event['payload']['issue']['number']} in {event['repo']['name']}")
+            elif event['type'] == "IssueCommentEvent":
+                print(f"  - {event['payload']['action']} comment on issue #{event['payload']['issue']['number']} in {event['repo']['name']}")
+            elif event['type'] == "PullRequestEvent":
+                print(f"  - {event['payload']['action']} pull request #{event['payload']['number']} in {event['repo']['name']}")
+            elif event['type'] == "PullRequestReviewEvent":
+                print(f"  - {event['payload']['action']} review on pull request #{event['payload']['pull_request']['number']} in {event['repo']['name']}")
+            elif event['type'] == "PullRequestReviewCommentEvent":
+                print(f"  - {event['payload']['action']} comment on pull request #{event['payload']['pull_request']['number']} in {event['repo']['name']}")
+            elif event['type'] == "CommitCommentEvent":
+                print(f"  - {event['payload']['action']} comment on commit {event['payload']['comment']['commit_id']} in {event['repo']['name']}")
+            elif event['type'] == "GollumEvent":
+                print(f"  - Updated wiki pages in {event['repo']['name']}")
+            elif event['type'] == "MemberEvent":
+                print(f"  - {event['payload']['action']} member {event['payload']['member']['login']} to {event['repo']['name']}")
+            elif event['type'] == "PublicEvent":
+                print(f"  - Made {event['repo']['name']} public")
+            elif event['type'] == "ReleaseEvent":
+                print(f"  - Published release {event['payload']['release']['tag_name']} in {event['repo']['name']}")
+            else:
+                print(f"  - Unknown event type {event['type']} in {event['repo']['name']}")
     
+    except Exception as e:
+        print(f"An error occurred while processing events: {e}")
+            
+print("-------------------------------------------------------------------------")
